@@ -75,16 +75,18 @@ class Handler implements Runnable{
 			BufferedReader br=getReader(socket);
 			PrintWriter pw=getWriter(socket);
 			String msg=null;
+			AnalysisSQL analysisSQL = new AnalysisSQL();
 			while ((msg=br.readLine())!=null) {        //接收客户端发送的sql语句
 				
-				sql.Message message = new AnalysisSQL(msg).work();        //处理sql语句
+				sql.Message message = analysisSQL.work(msg);        //处理sql语句
 				if(message.flag!=1) {
 					pw.println(message.msg);          // 异常
 				}else {
 					pw.println("success");          //sql执行成功
 				}
+				
 			}
-		} catch (IOException e) {
+		} catch (IOException | ClassNotFoundException e) {
 			e.printStackTrace();
 		}finally{
 			try {
