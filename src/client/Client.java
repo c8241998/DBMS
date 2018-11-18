@@ -12,6 +12,9 @@ import java.net.UnknownHostException;
 
 import javax.swing.JFrame;
 import javax.swing.JTextField;
+
+import com.sun.javafx.fxml.BeanAdapter;
+
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import javax.swing.JButton;
@@ -60,6 +63,7 @@ public class Client {
 				try {
 					Client client = new Client();
 					client.frame.setVisible(true);
+					
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -114,12 +118,41 @@ public class Client {
 			public void actionPerformed(ActionEvent e) {
 				String sql = textField.getText();
 				pw.println(sql);
-				String msg;
-				try {
-					msg = br.readLine();
-					System.out.println(msg);
-				} catch (IOException e1) {
+				if(sql.contains("select")) {
+					Integer x,y;
+					try {
+						String msg = br.readLine();
+						if(msg.equals("success")) {
+							x = Integer.valueOf(br.readLine());
+							y = Integer.valueOf(br.readLine());
+							for(int i=0;i<x;i++) {
+								for(int j=0;j<y;j++) {
+									System.out.print(br.readLine()+"...");
+								}
+								System.out.println();
+							}
+						}
+						else {
+							System.out.println(msg);
+						}
+					} catch (NumberFormatException e1) {
+						// TODO 自动生成的 catch 块
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO 自动生成的 catch 块
+						e1.printStackTrace();
+					}
+					
 				}
+				else {
+					String msg;
+					try {
+						msg = br.readLine();
+						System.out.println(msg);
+					} catch (IOException e1) {
+					}
+				}
+					
 				
 			}
 		});
