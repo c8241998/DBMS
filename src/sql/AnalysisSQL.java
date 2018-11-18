@@ -47,8 +47,7 @@ public class AnalysisSQL {
 			"^alter\\s+table\\s+(.+)\\s+drop\\s+(.+)$",  //6 删除列  done
 			"^insert\\s+into\\s+(.+)\\s*\\((.+)\\)\\s*values\\s*\\((.+)\\)",  //7 插入行 done
 			"^update (.+) set (.+)\\s?=\\s?(.+)(.*)$", //8 更新行
-			"^select\\s+(.+)\\s+from\\s+(.+)",  //9 查询
-//			"^select\\s+(.+)\\s+from\\s+(.+)(\\s+where\\s+(.+))?$",  //9 查询
+			"^select\\s+(.+)\\s+from\\s+(.+)",  //9 查询 done
 			"^delete from (.+)(.*)$",  //10 删除行
 			"^use\\s+(.+)$"  //11 切换数据库  done
 	};

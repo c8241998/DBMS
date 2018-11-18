@@ -13,10 +13,7 @@ import java.net.UnknownHostException;
 import javax.swing.JFrame;
 import javax.swing.JTextField;
 
-import com.sun.javafx.fxml.BeanAdapter;
 
-import java.awt.BorderLayout;
-import java.awt.GridLayout;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
