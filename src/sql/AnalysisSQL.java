@@ -38,18 +38,18 @@ public class AnalysisSQL {
 	
 	//正则表达式
 	String[] regrex= {
-			"^create\\s+database\\s+(.+)$",    //0  创建数据库  done
-			"drop\\s+database\\s+(.+)$",  //1 删除数据库  done
-			"^create\\s+table\\s*(.+)\\s+\\((.+)\\)$",  //2 添加表  done
-			"^drop\\s+table\\s*(.+)$",  //3 删除表  done
-			"^alter\\s+table\\s+(.+)\\s+add\\s+(.+)\\s+(.+)$",  //4 增加列  done
-			"^alter table modify Column (.+) (.+)$",  //5 修改列  
-			"^alter\\s+table\\s+(.+)\\s+drop\\s+(.+)$",  //6 删除列  done
-			"^insert\\s+into\\s+(.+)\\s*\\((.+)\\)\\s*values\\s*\\((.+)\\)",  //7 插入行 done
-			"^update (.+) set (.+)\\s?=\\s?(.+)(.*)$", //8 更新行
-			"^select\\s+(.+)\\s+from\\s+(.+)",  //9 查询 done
-			"^delete from (.+)(.*)$",  //10 删除行
-			"^use\\s+(.+)$"  //11 切换数据库  done
+			"^\\s*create\\s+database\\s+(.+)\\s*$",    //0  创建数据库  done
+			"^\\s*drop\\s+database\\s+(.+)\\s*$",  //1 删除数据库  done
+			"^\\s*create\\s+table\\s+(.+)\\s+\\((.+)\\)\\s*$",  //2 添加表  done
+			"^\\s*drop\\s+table\\s*(.+)\\s*$",  //3 删除表  done
+			"^\\s*alter\\s+table\\s+(.+)\\s+add\\s+(.+)\\s*$",  //4 增加列  done
+			"^\\s*alter\\s+table\\s+(.+)\\s+modify\\s+(.+)\\s+(.+)\\s*$",  //5 修改列  done
+			"^\\s*alter\\s+table\\s+(.+)\\s+drop\\s+(.+)\\s*$",  //6 删除列  done
+			"^\\s*insert\\s+into\\s+(.+)\\s*\\((.+)\\)\\s*values\\s*\\((.+)\\)\\s*$",  //7 插入行 done
+			"^\\s*update\\s+(.+)\\s+set\\s+(.+)\\s*$", //8 更新行 done
+			"^\\s*select\\s+(.+)\\s+from\\s+(.+)\\s*$",  //9 查询 done
+			"^\\s*delete\\s+from\\s+(.+)\\s*$",  //10 删除行  done
+			"^\\s*use\\s+(.+)\\s*$"  //11 切换数据库  done
 	};
 
 
@@ -91,7 +91,6 @@ public class AnalysisSQL {
 			return(new Message(2, "database already exsists."));
 		}
 	}
-	
 	
 	//删除文件夹
 	public static boolean delAllFile(String path) {       
@@ -161,9 +160,11 @@ public class AnalysisSQL {
 			temp+=new String(b, 0, len);
 		}
 		if(!temp.contains(database)) {
+			fi.close();
 			return new Message(2, "database not exists!");
 		}
 		this.database = database;
+		fi.close();
 		return new Message(1, "");
 	}
 	
@@ -199,6 +200,7 @@ public class AnalysisSQL {
 			name[i]=strings[0];
 			type[i]=strings[1];
 			if(!type[i].equals("int")&&!type[i].equals("double")&&!type[i].matches("varchar\\([0-9]+\\)")) {
+				csvWriter.close();
 				return new Message(2, "invalid type");
 			}
 			i++;
@@ -211,6 +213,7 @@ public class AnalysisSQL {
 		
 	}
 	
+	//表是否存在
 	public boolean isTableExists(String table) throws IOException, ClassNotFoundException {
 		
 		String dir = rootPath+"\\"+database+"\\";
@@ -250,6 +253,7 @@ public class AnalysisSQL {
 		return new Message(1, "");
 	}
 	
+	//类型名是否合法
 	public boolean isTypeValid(String type) {
 		if(!type.equals("int")&&!type.equals("double")&&!type.matches("varchar\\([0-9]+\\)")) {    //非法类型
 			return false;
@@ -301,6 +305,73 @@ public class AnalysisSQL {
 		
 		return new Message(1, "");
 	}
+	
+	//修改列
+	public Message modify_column(String table,String header,String newtype) throws ClassNotFoundException, IOException {
+		
+		if(!isTableExists(table)) {
+			return new Message(2, "table does not exsist.");
+		}
+		
+		if(!isHeaderValid(header, table)) {
+			return new Message(2, "invalid field.");
+		}
+		
+		if(!isTypeValid(newtype)) {
+			return new Message(2, "invalid new type");
+		}
+		
+		String dir = rootPath+"\\"+database+"\\";
+		String csvdir = dir+table+"\\"+table+".csv";
+		
+		CsvReader csvReader_ = new CsvReader(csvdir);
+		csvReader_.readHeaders();
+		csvReader_.readRecord();
+		boolean flag=true;
+		while(csvReader_.readRecord()) {
+			if(!isValueType(csvReader_.get(header), newtype)) {
+				flag=false;
+				break;
+			}
+		}
+		
+		csvReader_.close();
+		
+		if(!flag) {
+			return new Message(2, "new type is invalid with a exisisted value.");
+		}
+		
+		
+		
+		CsvReader csvReader = new CsvReader(csvdir);
+		CsvWriter csvWriter = new CsvWriter(dir+table+"\\__TEMP__.csv");
+		
+		csvReader.readHeaders();
+		csvWriter.writeRecord(csvReader.getHeaders());
+		Integer index = csvReader.getIndex(header);
+		
+		while(csvReader.readRecord()) {
+			if(csvReader.getCurrentRecord()==0) {
+				String[] t = csvReader.getValues();
+				t[index] = newtype;
+				csvWriter.writeRecord(t);
+			}else {
+				csvWriter.writeRecord(csvReader.getValues());
+			}
+			
+		}
+		
+		csvReader.close();
+		csvWriter.close();
+		
+		File file = new File(csvdir);
+		file.delete();
+		File tempFile = new File(dir+table+"\\__TEMP__.csv");
+		tempFile.renameTo(file);
+		
+		return new Message(1, "");
+	}
+	
 	
 	//删除列
 	public Message drop_column(String table,String header) throws IOException, ClassNotFoundException {
@@ -393,9 +464,6 @@ public class AnalysisSQL {
 		}
 		else if(type.contains("varchar")) {
 			String num = type.substring(8,type.length()-1);
-//			String regrex = "^varchar\\((.+)\\)$";
-//			Pattern pattern = Pattern.compile(regrex);
-//			Matcher m = pattern.matcher(type);
 			Integer t = Integer.valueOf(num);
 			if(value.length()>t) {
 				return false;
@@ -436,11 +504,13 @@ public class AnalysisSQL {
 				}
 			}
 			if(!flag) {
+				csvReader.close();
 				return new Message(2, "invalid field name");
 			}
 			String value = values[i];
 			String type = csvReader.get(header);
 			if(!isValueType(value,type)) {
+				csvReader.close();
 				return new Message(2, "type and value mismatch.");
 			}
 			map.put(header, value);
@@ -487,18 +557,14 @@ public class AnalysisSQL {
 		return false;
 	}
 	
-	//查询
-	public Message select_row(String headers_,String table,String limit_) throws ClassNotFoundException, IOException {
-		
+	//更新
+	public Message update_row(String table,String header_,String value_,String limit_) throws ClassNotFoundException, IOException {
 		if(!isTableExists(table)) {
 			return new Message(2, "table does not exsist.");
 		}
 		
-		String[] headers = headers_.split("\\,");
-		for (String string : headers) {
-			if(!isHeaderValid(string, table)) {
-				return new Message(2, "invalid table field.");
-			}
+		if(!isHeaderValid(header_, table)) {
+			return new Message(2, "invalid table field.");
 		}
 		
 		String[] limits = null;
@@ -506,23 +572,33 @@ public class AnalysisSQL {
 		
 		String dir = rootPath+"\\"+database+"\\";
 		String csvdir = dir+table+"\\"+table+".csv";
-		CsvReader csvReader = new CsvReader(csvdir);
 		
-		csvReader.readHeaders();
-		csvReader.readRecord();
+		
+		CsvReader csvReader_ = new CsvReader(csvdir);
+		csvReader_.readHeaders();
+		csvReader_.readRecord();
+		String type = csvReader_.get(header_);
+		if(!isValueType(value_, type)) {
+			csvReader_.close();
+			return new Message(2, "value and type mismatch");
+		}
+		
 		
 		if(!limit_.equals("null")) {
 			if(!limit_.contains("and")) {
 				String string = limit_;
 				if(!string.contains("=")) {
+					csvReader_.close();
 					return new Message(2, "invalid limit.");
 				}
 				String[] t = string.split("\\=");
 				if(!isHeaderValid(t[0], table)) {
+					csvReader_.close();
 					return new Message(2, "invalid table field.");
 				}
 				
-				if(!isValueType(t[1], csvReader.get(t[0]))) {
+				if(!isValueType(t[1], csvReader_.get(t[0]))) {
+					csvReader_.close();
 					return new Message(2, "value and type mismatch.");
 				}
 				
@@ -532,14 +608,137 @@ public class AnalysisSQL {
 				limits = limit_.split("and");
 				for (String string : limits) {
 					if(!string.contains("=")) {
+						csvReader_.close();
 						return new Message(2, "invalid limit.");
 					}
 					String[] t = string.split("\\=");
 					if(!isHeaderValid(t[0], table)) {
+						csvReader_.close();
+						return new Message(2, "invalid table field.");
+					}
+					
+					if(!isValueType(t[1], csvReader_.get(t[0]))) {
+						csvReader_.close();
+						return new Message(2, "value and type mismatch.");
+					}
+					
+					limitMap.put(t[0], t[1]);
+				}
+			}
+				
+		}
+		
+		csvReader_.close();
+		
+		CsvReader csvReader = new CsvReader(csvdir);
+		CsvWriter csvWriter = new CsvWriter(dir+table+"\\"+"__TEMP__.csv");
+		
+		csvReader.readHeaders();
+		csvWriter.writeRecord(csvReader.getHeaders());
+		csvReader.readRecord();
+		csvWriter.writeRecord(csvReader.getValues());
+		
+		while(csvReader.readRecord()) {
+			Iterator it = limitMap.entrySet().iterator();
+			boolean flag=true;
+			while(it.hasNext()) {
+				Map.Entry entry = (Map.Entry) it.next();
+				String key = (String) entry.getKey();
+				String value = (String) entry.getValue();
+				if(!csvReader.get(key).equals(value)) {
+					flag=false;
+					break;
+				}
+			}
+			if(!flag) {
+				csvWriter.writeRecord(csvReader.getValues());
+			}else {
+				String[] t = csvReader.getValues();
+				Integer index = csvReader.getIndex(header_);
+				t[index] = value_;
+				csvWriter.writeRecord(t);
+			}
+			
+		}
+		
+		csvReader.close();
+		csvWriter.close();
+		
+		File file = new File(csvdir);
+		file.delete();
+		File tempFile = new File(dir+table+"\\__TEMP__.csv");
+		tempFile.renameTo(file);
+		
+		return new Message(1, "");
+	}
+	
+	//查询
+	public Message select_row(String headers_,String table,String limit_) throws ClassNotFoundException, IOException {
+		
+		if(!isTableExists(table)) {
+			return new Message(2, "table does not exsist.");
+		}
+		
+		String[] headers = null;
+		if(!headers_.equals("*")) {
+			headers = headers_.split("\\,");
+			for (String string : headers) {
+				if(!isHeaderValid(string, table)) {
+					return new Message(2, "invalid table field.");
+				}
+			}
+		}
+		
+		
+		String[] limits = null;
+		HashMap<String, String> limitMap = new HashMap<>();
+		
+		String dir = rootPath+"\\"+database+"\\";
+		String csvdir = dir+table+"\\"+table+".csv";
+		CsvReader csvReader = new CsvReader(csvdir);
+		
+		csvReader.readHeaders();
+		if(headers_.equals("*")) {
+			headers = csvReader.getHeaders();
+		}
+		
+		csvReader.readRecord();
+		
+		if(!limit_.equals("null")) {
+			if(!limit_.contains("and")) {
+				String string = limit_;
+				if(!string.contains("=")) {
+					csvReader.close();
+					return new Message(2, "invalid limit.");
+				}
+				String[] t = string.split("\\=");
+				if(!isHeaderValid(t[0], table)) {
+					csvReader.close();
+					return new Message(2, "invalid table field.");
+				}
+				
+				if(!isValueType(t[1], csvReader.get(t[0]))) {
+					csvReader.close();
+					return new Message(2, "value and type mismatch.");
+				}
+				
+				limitMap.put(t[0], t[1]);
+			}
+			else {
+				limits = limit_.split("and");
+				for (String string : limits) {
+					if(!string.contains("=")) {
+						csvReader.close();
+						return new Message(2, "invalid limit.");
+					}
+					String[] t = string.split("\\=");
+					if(!isHeaderValid(t[0], table)) {
+						csvReader.close();
 						return new Message(2, "invalid table field.");
 					}
 					
 					if(!isValueType(t[1], csvReader.get(t[0]))) {
+						csvReader.close();
 						return new Message(2, "value and type mismatch.");
 					}
 					
@@ -591,8 +790,106 @@ public class AnalysisSQL {
 		
 	}
 	
+	public Message delete_row(String table,String limit_) throws ClassNotFoundException, IOException {
+	
+		if(!isTableExists(table)) {
+			return new Message(2, "table does not exsist.");
+		}
+		
+		String[] limits = null;
+		HashMap<String, String> limitMap = new HashMap<>();
+		
+		String dir = rootPath+"\\"+database+"\\";
+		String csvdir = dir+table+"\\"+table+".csv";
+		
+		CsvReader csvReader_ = new CsvReader(csvdir);
+		csvReader_.readHeaders();
+		csvReader_.readRecord();
+		
+		if(!limit_.equals("null")) {
+			if(!limit_.contains("and")) {
+				String string = limit_;
+				if(!string.contains("=")) {
+					csvReader_.close();
+					return new Message(2, "invalid limit.");
+				}
+				String[] t = string.split("\\=");
+				if(!isHeaderValid(t[0], table)) {
+					csvReader_.close();
+					return new Message(2, "invalid table field.");
+				}
+				
+				if(!isValueType(t[1], csvReader_.get(t[0]))) {
+					csvReader_.close();
+					return new Message(2, "value and type mismatch.");
+				}
+				
+				limitMap.put(t[0], t[1]);
+			}
+			else {
+				limits = limit_.split("and");
+				for (String string : limits) {
+					if(!string.contains("=")) {
+						csvReader_.close();
+						return new Message(2, "invalid limit.");
+					}
+					String[] t = string.split("\\=");
+					if(!isHeaderValid(t[0], table)) {
+						csvReader_.close();
+						return new Message(2, "invalid table field.");
+					}
+					
+					if(!isValueType(t[1], csvReader_.get(t[0]))) {
+						csvReader_.close();
+						return new Message(2, "value and type mismatch.");
+					}
+					
+					limitMap.put(t[0], t[1]);
+				}
+			}
+				
+		}
+		csvReader_.close();
+		
+		CsvReader csvReader = new CsvReader(csvdir);
+		CsvWriter csvWriter = new CsvWriter(dir+table+"\\"+"__TEMP__.csv");
+		csvReader.readHeaders();
+		csvWriter.writeRecord(csvReader.getHeaders());
+		csvReader.readRecord();
+		csvWriter.writeRecord(csvReader.getValues());
+		
+		while(csvReader.readRecord()) {
+			Iterator it = limitMap.entrySet().iterator();
+			boolean flag=true;
+			while(it.hasNext()) {
+				Map.Entry entry = (Map.Entry) it.next();
+				String key = (String) entry.getKey();
+				String value = (String) entry.getValue();
+				if(!csvReader.get(key).equals(value)) {
+					flag=false;
+					break;
+				}
+			}
+			if(!flag) {
+				csvWriter.writeRecord(csvReader.getValues());
+			}
+			
+		}
+		
+		csvReader.close();
+		csvWriter.close();
+		
+		File file = new File(csvdir);
+		file.delete();
+		File tempFile = new File(dir+table+"\\__TEMP__.csv");
+		tempFile.renameTo(file);
+		
+		
+		return new Message(1, "");
+	}
+	
 	//处理sql
-	public Message work(String sql) throws IOException, ClassNotFoundException {
+	public Message work(String sql) throws IOException, ClassNotFoundException,ArrayIndexOutOfBoundsException {
 		this.sql =sql;
 		int index = 0;
 		boolean finish = false;
@@ -601,18 +898,18 @@ public class AnalysisSQL {
 			Matcher m = pattern.matcher(sql);
 			if(m.find()) {
 				if(index==0) {    //创建数据库
-					String database = m.group(1);
+					String database = m.group(1).replaceAll("\\s+", "");
 					return create_database(database);
 				}
 				if(index==1) {   //删除数据库
-					String database = m.group(1);
+					String database = m.group(1).replaceAll("\\s+", "");
 					return drop_database(database);
 				}
 				if(index==2) {   //添加表
 					if(database==null) {
 						return new Message(2, "Please choose database first.");
 					}
-					String table = m.group(1);
+					String table = m.group(1).replaceAll("\\s+", "");
 					String types = m.group(2);
 					
 					return create_table(table,types);
@@ -621,40 +918,73 @@ public class AnalysisSQL {
 					if(database==null) {
 						return new Message(2, "Please choose database first.");
 					}
-					String table = m.group(1);
+					String table = m.group(1).replaceAll("\\s+", "");
 					return drop_table(table);
 				}
-				if(index==4) {   //添加列     "^alter\\s+table\\s+(.+)\\s+add\\s+(.+)\\s+(.+)$"
+				if(index==4) {   //添加列   "^\\s*alter\\s+table\\s+(.+)\\s+add\\s+(.+)\\s*$"
 					if(database==null) {
 						return new Message(2, "Please choose database first.");
 					}
-					String table = m.group(1);
-					String header = m.group(2);
-					String type = m.group(3);
+					String table = m.group(1).replaceAll("\\s+", "");
+					String header = m.group(2).split("\\s+")[0].replaceAll("\\s+", "");
+					String type = m.group(2).split("\\s+")[1].replaceAll("\\s+", "");
+
 					return add_column(table,header,type);
+				}
+				if(index==5) {  //修改列 "^alter\\s+table\\s+(.+)\\s+modify\\s+(.+)\\s+(.+)$"
+					if(database==null) {
+						return new Message(2, "Please choose database first.");
+					}
+					String table = m.group(1).replaceAll("\\s+", "");
+					String header = m.group(2).replaceAll("\\s+", "");
+					String newtype = m.group(3).replaceAll("\\s+", "");
+					return modify_column(table,header,newtype);
 				}
 				if(index==6) {   //删除列     
 					if(database==null) {
 						return new Message(2, "Please choose database first.");
 					}
-					String table = m.group(1);
-					String header = m.group(2);
+					String table = m.group(1).replaceAll("\\s+", "");
+					String header = m.group(2).replaceAll("\\s+", "");
 					return drop_column(table,header);
 				}
 				if(index==7) {   //插入行   "^insert\\s+into\\s+(.+)\\s*\\((.+)\\)\\s*values\\s*\\((.+)\\)"
 					if(database==null) {
 						return new Message(2, "Please choose database first.");
 					}
-					String table = m.group(1);
-					String headers = m.group(2);
-					String values = m.group(3);
+					String table = m.group(1).replaceAll("\\s+", "");
+					String headers = m.group(2).replaceAll("\\s+", "");
+					String values = m.group(3).replaceAll("\\s+", "");
 					return add_row(table,headers,values);
+				}
+				if(index==8) {   //更新  "^update\\s+(.+)\\s+set\\s+(.+)\\s*\\=\\s*(.+)$"
+					if(database==null) {
+						return new Message(2, "Please choose database first.");
+					}
+					String table = m.group(1).replaceAll("\\s+", "");
+					
+					String header = null;
+					String value = null;
+					String limit = null;
+					if(m.group(2).contains("where")) {
+						String[] t = m.group(2).split("\\s+where\\s+");
+						header = t[0].replaceAll("\\s+", "").split("\\=")[0];
+						value = t[0].replaceAll("\\s+", "").split("\\=")[1];
+						limit = t[1].replaceAll("\\s+", "");
+					}else {
+						header = m.group(2).replaceAll("\\s+", "").split("\\=")[0];
+						value = m.group(2).replaceAll("\\s+", "").split("\\=")[1];
+						limit = "null";
+					}
+					
+					return update_row(table,header,value,limit);
+					
 				}
 				if(index==9) {    // 查询 "^select\\s+(.+)\\s+from\\s+(.+)"
 					if(database==null) {
 						return new Message(2, "Please choose database first.");
 					}
-					String headers = m.group(1);
+					String headers = m.group(1).replaceAll("\\s+", "");
 					String table = null;
 					String limit = null;
 					if(m.group(2).contains("where")) {
@@ -666,13 +996,27 @@ public class AnalysisSQL {
 						limit = "null";
 					}
 					
-//					System.out.println(headers);
-//					System.out.println(table);
-//					System.out.println(limit);
 					return select_row(headers,table,limit);
 				}
+				if(index==10) {   // 删除 "^delete\\s+from\\s+(.+)\\s+(.*)$"
+					if(database==null) {
+						return new Message(2, "Please choose database first.");
+					}
+					String table = null;
+					String limit = null;
+					String temp = m.group(1);
+					if(temp.contains("where")) {
+						String[] t = temp.split("\\s+where\\s+");
+						table = t[0].replaceAll("\\s+", "");
+						limit = t[1].replaceAll("\\s+", ""); 
+					}else {
+						table =  temp.replaceAll("\\s+", "");
+						limit = "null";
+					}
+					return delete_row(table,limit);
+				}
 				if(index==11) {   //切换数据库
-					String database = m.group(1);
+					String database = m.group(1).replaceAll("\\s+", "");
 					return use_database(database);
 				}
 				finish = true;
