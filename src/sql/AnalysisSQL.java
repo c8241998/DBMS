@@ -190,24 +190,59 @@ public class AnalysisSQL {
 		file.mkdir();
 		file = new File(dir+table+"\\"+table+".csv");
 		file.createNewFile();
+		
 		CsvWriter csvWriter = new CsvWriter(dir+table+"\\"+table+".csv",',',Charset.forName("GBK"));
+		
+		
 		String[] types = types_.split("\\s*\\,\\s*");
-		int i=0;
-		String[] name = new String[types.length];
-		String[] type = new String[types.length];
-		for (String type_ : types) {
+		
+		int len = types.length;
+		String header = "";
+		
+		if(types_.contains("primary key")) {
+			len--;
+			Pattern pattern  = Pattern.compile("primary key\\s*\\((.+)\\)");
+			Matcher m = pattern.matcher(types_);
+			if(m.find()) {
+				header = m.group(1);
+			}
+			
+		}
+		
+		String[] name = new String[len];
+		String[] type = new String[len];
+		for (int i=0;i<len;i++) {
+			String type_ = types[i];
 			String[] strings = type_.split("\\s+");
 			name[i]=strings[0];
 			type[i]=strings[1];
-			if(!type[i].equals("int")&&!type[i].equals("double")&&!type[i].matches("varchar\\([0-9]+\\)")) {
+			if(!isTypeValid(type[i])){
 				csvWriter.close();
 				return new Message(2, "invalid type");
 			}
-			i++;
 		}
         csvWriter.writeRecord(name);
         csvWriter.writeRecord(type);
         csvWriter.close();
+        
+        CsvWriter checkWriter = new CsvWriter(dir+table+"\\"+"check.csv",',',Charset.forName("GBK"));
+        checkWriter.writeRecord(name);
+        String[] check = new String[len];
+        for (int i=0;i<len;i++) {
+        	check[i]="";
+        	String type_ = types[i];
+        	if(type_.contains("not null")) {
+        		check[i]+=" not null ";
+        	}
+        	if(type_.contains("unique")) {
+        		check[i]+=" unique ";
+        	}
+        	if(name[i].equals(header)) {
+        		check[i]=" not null unique primary ";
+        	}
+        }
+        checkWriter.writeRecord(check);
+        checkWriter.close();
 		
 		return new Message(1, "");
 		
@@ -486,12 +521,37 @@ public class AnalysisSQL {
 		}
 		
 		String dir = rootPath+"\\"+database+"\\";
+		
+		CsvReader checkReader = new CsvReader(dir+table+"\\"+"check.csv");
+		checkReader.readHeaders();
+		String[] checkHeaders = checkReader.getHeaders();
+		checkReader.readRecord();
+		String[] checkLimits = checkReader.getValues();
+		checkReader.close();
+		
+		
+		
 		String csvdir = dir+table+"\\"+table+".csv";
 		CsvReader csvReader = new CsvReader(csvdir);
 		
 		csvReader.readHeaders();    //header
 		String[] headers_all = csvReader.getHeaders();
 		csvReader.readRecord();     //type
+		
+		for(int i=0;i<checkHeaders.length;i++) {   // not null check
+			String header = checkHeaders[i];
+			boolean flag = false;
+			for(int j=0;j<headers.length;j++) {
+				if(headers[j].equals(header)) {
+					flag=true;
+					break;
+				}
+			}
+			if(!flag && checkLimits[i].contains("not null")) {
+				csvReader.close();
+				return new Message(2, "Check Error.");
+			}
+		}
 		
  		HashMap<String, String> map = new HashMap<>();
 		int i=0;
@@ -513,6 +573,21 @@ public class AnalysisSQL {
 				csvReader.close();
 				return new Message(2, "type and value mismatch.");
 			}
+			
+			if(checkLimits[i].contains("unique")) {
+				CsvReader tempReader = new CsvReader(csvdir);
+				tempReader.readHeaders();
+				tempReader.readRecord();
+				while(tempReader.readRecord()) {
+					if(tempReader.get(header).equals(value)) {
+						tempReader.close();
+						csvReader.close();
+						return new Message(2, "Check Error(unique).");
+					}
+				}
+			}
+				
+			
 			map.put(header, value);
 			i++;
 		}
@@ -905,7 +980,7 @@ public class AnalysisSQL {
 					String database = m.group(1).replaceAll("\\s+", "");
 					return drop_database(database);
 				}
-				if(index==2) {   //添加表
+				if(index==2) {   //添加表   "^\\s*create\\s+table\\s+(.+)\\s+\\((.+)\\)\\s*$"
 					if(database==null) {
 						return new Message(2, "Please choose database first.");
 					}
