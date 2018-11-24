@@ -1,4 +1,4 @@
-package serialization;
+package sql;
 
 import java.io.Serializable;
 import java.util.ArrayList;

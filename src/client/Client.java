@@ -12,13 +12,16 @@ import java.net.UnknownHostException;
 
 import javax.swing.JFrame;
 import javax.swing.JTextField;
+import javax.swing.UIManager;
 
+import org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper;
 
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
+import javax.swing.JMenuBar;
 
 public class Client {
 
@@ -54,7 +57,16 @@ public class Client {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-
+		
+		try {
+			BeautyEyeLNFHelper.frameBorderStyle = BeautyEyeLNFHelper.FrameBorderStyle.generalNoTranslucencyShadow;
+			UIManager.put("RootPane.setupButtonVisible", false);
+	        org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper.launchBeautyEyeLNF();
+		} catch (Exception e1) {
+			// TODO 自动生成的 catch 块
+			e1.printStackTrace();
+		}
+		
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -156,5 +168,4 @@ public class Client {
 		btnNewButton.setBounds(152, 158, 113, 27);
 		frame.getContentPane().add(btnNewButton);
 	}
-
 }

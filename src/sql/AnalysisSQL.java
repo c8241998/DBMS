@@ -3,6 +3,7 @@ package sql;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -19,8 +20,6 @@ import java.util.regex.Pattern;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
-
-import serialization.Database;
 
 public class AnalysisSQL {
 
@@ -49,7 +48,10 @@ public class AnalysisSQL {
 			"^\\s*update\\s+(.+)\\s+set\\s+(.+)\\s*$", //8 更新行 done
 			"^\\s*select\\s+(.+)\\s+from\\s+(.+)\\s*$",  //9 查询 done
 			"^\\s*delete\\s+from\\s+(.+)\\s*$",  //10 删除行  done
-			"^\\s*use\\s+(.+)\\s*$"  //11 切换数据库  done
+			"^\\s*use\\s+(.+)\\s*$",  //11 切换数据库  done
+			"^get database$",  //12 获取数据库列表
+			"^get table$",  //13 获取数据表列表
+			"^get property on (.+)$"  //14 获取字段列表
 	};
 
 
@@ -861,7 +863,7 @@ public class AnalysisSQL {
 			}
 		}
 		
-		return new Message(1, "select");
+		return new Message(1, "special");
 		
 	}
 	
@@ -961,6 +963,67 @@ public class AnalysisSQL {
 		
 		
 		return new Message(1, "");
+	}
+	
+	public Message get_database() throws IOException {
+		
+		FileInputStream fi = new FileInputStream(rootFile);
+		byte[] b = new byte[5];
+		int len;
+		String temp = "";
+		while((len=fi.read(b))!=-1) {
+			temp+=new String(b, 0, len);
+		}
+		
+		fi.close();
+		
+		String[] databases = temp.split("\\|\\|");
+		len = databases.length-1;
+		
+		pw.println(len);
+		for(int i=1;i<=len;i++) {
+			pw.println(databases[i]);
+		}
+		
+		return new Message(1, "special");
+	}
+	
+	public Message get_table() throws IOException, ClassNotFoundException {
+		
+		String dir = rootPath+"\\"+database+"\\";
+		File file = new File(dir+database+".tb");
+		ObjectInputStream oiStream = new ObjectInputStream(new FileInputStream(file));        //读入database.tb
+		Database tableList = (Database)oiStream.readObject();
+		oiStream.close();
+		
+		int len = tableList.table.size();
+		pw.println(len);
+		for(int i=0;i<len;i++) {
+			pw.println(tableList.table.get(i));
+		}
+		
+		return new Message(1, "special");
+	}
+	
+	public Message get_property(String table) throws IOException {
+		
+		String dir = rootPath+"\\"+database+"\\";
+		String csvdir = dir+table+"\\"+table+".csv";
+		
+		CsvReader csvReader_ = new CsvReader(csvdir);
+		csvReader_.readHeaders();
+		
+		String[] headers = csvReader_.getHeaders();
+		
+		int len=headers.length;
+		
+		pw.println(len);
+		
+		for(int i=0;i<len;i++) {
+			pw.println(headers[i]);
+		}
+		
+		return new Message(1, "special");
 	}
 	
 	//处理sql
@@ -1093,6 +1156,16 @@ public class AnalysisSQL {
 				if(index==11) {   //切换数据库
 					String database = m.group(1).replaceAll("\\s+", "");
 					return use_database(database);
+				}
+				if(index==12) {  //数据库列表
+					return get_database();
+				}
+				if(index==13) {  //获取数据表
+					return get_table();
+				}
+				if(index==14) {
+					String table = m.group(1);
+					return get_property(table);
 				}
 				finish = true;
 				break;

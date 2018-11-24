@@ -17,7 +17,9 @@ public class EchoServer{
 		//创建线程池
 		//Rumtime的availableProcessors()方法返回当前系统的cup数目
 		//系统的cpu越多，线程池中的数目也越多
-		threadPool=new ThreadPool(Runtime.getRuntime().availableProcessors()*POOL_SIZE);
+		
+		int size = Runtime.getRuntime().availableProcessors()*POOL_SIZE;
+		threadPool=new ThreadPool(size);
 		System.out.println("服务器启动！");
 	}
 	public void service(){
@@ -81,7 +83,7 @@ class Handler implements Runnable{
 					if(message.flag!=1) {
 						pw.println(message.msg);          // 异常
 					}else {
-						if(!message.msg.equals("select")) {   //select 此时只需返回查询集合 不用
+						if(!message.msg.equals("special")) {   //select 此时只需返回查询集合 不用
 							pw.println("success");          //sql执行成功
 						}
 						

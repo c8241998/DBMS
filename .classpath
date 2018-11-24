@@ -3,5 +3,6 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="D:/Users/56936/eclipse-workspace/JAR/jfreechart-1.0.10/lib/javacsv-2.1.jar"/>
+	<classpathentry kind="lib" path="D:/Users/56936/eclipse-workspace/JAR/SwingSets3(BeautyEyeLNFDemo).jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
