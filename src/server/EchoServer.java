@@ -15,7 +15,7 @@ public class EchoServer{
 	public EchoServer()throws IOException{
 		serverSocket=new ServerSocket(port);
 		//创建线程池
-		//Rumtime的availableProcessors()方法返回当前系统的cup数目
+		//Rumtime的availableProcessors()方法返回当前系统的cpu数目
 		//系统的cpu越多，线程池中的数目也越多
 		
 		int size = Runtime.getRuntime().availableProcessors()*POOL_SIZE;
@@ -57,7 +57,7 @@ class Handler implements Runnable{
 	
 	private PrintWriter getWriter(Socket socket)throws IOException{
 		OutputStream socketOut=socket.getOutputStream();	
-		return new PrintWriter(socketOut, true);//参数为true表示每写一行，PrintWriter缓存就自动溢出，把数据写到目的
+		return new PrintWriter(socketOut,true);//参数为true表示每写一行，PrintWriter缓存就自动溢出，把数据写到目的
 	}
  	
 	private BufferedReader getReader(Socket socket)throws IOException {
@@ -79,6 +79,7 @@ class Handler implements Runnable{
 			AnalysisSQL analysisSQL = new AnalysisSQL(pw);
 			while ((msg=br.readLine())!=null) {        //接收客户端发送的sql语句
 				try {
+					System.out.println(msg);
 					sql.Message message = analysisSQL.work(msg);        //处理sql语句
 					if(message.flag!=1) {
 						pw.println(message.msg);          // 异常
@@ -94,8 +95,9 @@ class Handler implements Runnable{
 				
 				
 			}
-		} catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+			//e.printStackTrace();
+			System.out.println(".");
 		}finally{
 			try {
 				if(socket!=null){

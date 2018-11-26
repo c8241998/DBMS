@@ -11,7 +11,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.sql.Time;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -26,8 +29,10 @@ public class AnalysisSQL {
 	PrintWriter pw = null;
 	
 	String sql = null;
+	
+	String DBMSPath = "D:\\资料\\课程\\数据库\\DBMS\\DBMS";
 
-	String rootPath="D:\\资料\\课程\\数据库\\DBMS\\DBMS\\data";
+	String rootPath= DBMSPath + "\\data";
 
 	File rootFile = new File(rootPath+"\\root\\root.db");     //rootPath database 文件夹路径
 	
@@ -51,7 +56,8 @@ public class AnalysisSQL {
 			"^\\s*use\\s+(.+)\\s*$",  //11 切换数据库  done
 			"^get database$",  //12 获取数据库列表
 			"^get table$",  //13 获取数据表列表
-			"^get property on (.+)$"  //14 获取字段列表
+			"^get property on (.+)$",  //14 获取字段列表
+			"^copy$" //15 备份数据库
 	};
 
 
@@ -340,6 +346,35 @@ public class AnalysisSQL {
 		File tempFile = new File(dir+table+"\\__TEMP__.csv");
 		tempFile.renameTo(file);
 		
+		
+		
+		CsvReader csvReader_ = new CsvReader(dir+table+"\\"+"check.csv");
+		CsvWriter csvWriter_ = new CsvWriter(dir+table+"\\__TEMP__.csv");
+		while(csvReader_.readRecord()) {
+			int num = csvReader_.getColumnCount();
+			num++;
+			String[] values = csvReader_.getValues();
+			String[] temp = new String[num];
+			for(int i=0;i<num-1;i++) {
+				temp[i]=values[i];
+			}
+			if(csvReader_.getCurrentRecord()==0) {
+				temp[num-1] = header;
+			}else {
+				temp[num-1] = "";
+			}
+			
+			csvWriter_.writeRecord(temp);
+		}
+		
+		csvReader_.close();
+		csvWriter_.close();
+		
+		file = new File(dir+table+"\\"+"check.csv");
+		file.delete();
+		tempFile = new File(dir+table+"\\__TEMP__.csv");
+		tempFile.renameTo(file);
+		
 		return new Message(1, "");
 	}
 	
@@ -454,14 +489,61 @@ public class AnalysisSQL {
 			}
 			csvWriter.writeRecord(temp);
 		}
-		
-		csvReader.close();
 		csvWriter.close();
+		csvReader.close();
+		
 		
 		File file = new File(csvdir);
 		file.delete();
 		File tempFile = new File(dir+table+"\\__TEMP__.csv");
 		tempFile.renameTo(file);
+		
+		
+		CsvReader csvReader_ = new CsvReader(dir+table+"\\check.csv");
+		CsvWriter csvWriter_ = new CsvWriter(dir+table+"\\__TEMP__.csv");
+		
+		csvReader_.readHeaders();
+		num = csvReader_.getHeaderCount();
+		headers = csvReader_.getHeaders();    //获取header为第几列
+		order = 0;
+		for(int i=0;i<num;i++) {
+			if(headers[i].equals(header)) {
+				order = i;
+				break;
+			}
+		}
+		
+		temp = new String[num-1];          //写入新headers
+		for(int i=0;i<order;i++) {
+			temp[i]=headers[i];
+		}
+		for(int i=order+1;i<num;i++) {
+			temp[i-1]=headers[i];
+		}
+		csvWriter_.writeRecord(temp);
+		
+		while(csvReader_.readRecord()) {          //写入record
+			
+			String[] values = csvReader_.getValues();
+			temp = new String[num-1];
+			for(int i=0;i<order;i++) {
+				temp[i]=values[i];
+			}
+			for(int i=order+1;i<num;i++) {
+				temp[i-1]=values[i];
+			}
+			csvWriter_.writeRecord(temp);
+		}
+		csvWriter_.close();
+		csvReader_.close();
+		
+		
+		file = new File(dir+table+"\\check.csv");
+		file.delete();
+		tempFile = new File(dir+table+"\\__TEMP__.csv");
+		tempFile.renameTo(file);
+		
+		
 		
 		return new Message(1, "");
 	}
@@ -478,6 +560,7 @@ public class AnalysisSQL {
 			CsvWriter cwriter = new CsvWriter(writer,',');
 			cwriter.writeRecord(str,false);
 			cwriter.close();
+			writer.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1017,6 +1100,8 @@ public class AnalysisSQL {
 		
 		int len=headers.length;
 		
+		csvReader_.close();
+		
 		pw.println(len);
 		
 		for(int i=0;i<len;i++) {
@@ -1025,6 +1110,44 @@ public class AnalysisSQL {
 		
 		return new Message(1, "special");
 	}
+	
+	// 复制文件夹
+	public static void copyDir(String sourcePath, String newPath) throws IOException {
+        File file = new File(sourcePath);
+        String[] filePath = file.list();
+        
+        if (!(new File(newPath)).exists()) {
+            (new File(newPath)).mkdir();
+        }
+        
+        for (int i = 0; i < filePath.length; i++) {
+            if ((new File(sourcePath + file.separator + filePath[i])).isDirectory()) {
+                copyDir(sourcePath  + file.separator  + filePath[i], newPath  + file.separator + filePath[i]);
+            }
+            
+            if (new File(sourcePath  + file.separator + filePath[i]).isFile()) {
+                copyFile(sourcePath + file.separator + filePath[i], newPath + file.separator + filePath[i]);
+            }
+            
+        }
+    }
+	
+	//复制文件
+	public static void copyFile(String oldPath, String newPath) throws IOException {
+        File oldFile = new File(oldPath);
+        File file = new File(newPath);
+        FileInputStream in = new FileInputStream(oldFile);
+        FileOutputStream out = new FileOutputStream(file);;
+
+        byte[] buffer=new byte[2097152];
+        int readByte = 0;
+        while((readByte = in.read(buffer)) != -1){
+            out.write(buffer, 0, readByte);
+        }
+    
+        in.close();
+        out.close();
+    }
 	
 	//处理sql
 	public Message work(String sql) throws IOException, ClassNotFoundException,ArrayIndexOutOfBoundsException {
@@ -1166,6 +1289,13 @@ public class AnalysisSQL {
 				if(index==14) {
 					String table = m.group(1);
 					return get_property(table);
+				}
+				if(index==15) {
+					String copyDir = DBMSPath+"\\"+new SimpleDateFormat("yyyy-MM-dd HHmmss").format(new Date());
+					File file = new File(copyDir);
+					file.mkdirs();
+					copyDir(rootPath, copyDir);
+					return new Message(1, "");
 				}
 				finish = true;
 				break;

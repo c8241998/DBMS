@@ -138,11 +138,11 @@ public class Client {
 								for(int j=0;j<y;j++) {
 									System.out.print(br.readLine()+"...");
 								}
-								System.out.println();
+//								System.out.println();
 							}
 						}
 						else {
-							System.out.println(msg);
+//							System.out.println(msg);
 						}
 					} catch (NumberFormatException e1) {
 						// TODO 自动生成的 catch 块
@@ -157,7 +157,7 @@ public class Client {
 					String msg;
 					try {
 						msg = br.readLine();
-						System.out.println(msg);
+//						System.out.println(msg);
 					} catch (IOException e1) {
 					}
 				}
