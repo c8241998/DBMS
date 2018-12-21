@@ -1,4 +1,4 @@
-package sql;
+package server_sql;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -30,7 +30,7 @@ public class AnalysisSQL {
 	
 	String sql = null;
 	
-	String DBMSPath = "D:\\资料\\课程\\数据库\\DBMS\\DBMS";
+	String DBMSPath = "database";
 
 	String rootPath= DBMSPath + "\\data";
 
@@ -670,6 +670,7 @@ public class AnalysisSQL {
 						return new Message(2, "Check Error(unique).");
 					}
 				}
+				tempReader.close();
 			}
 				
 			

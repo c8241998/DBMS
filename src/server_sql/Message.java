@@ -1,4 +1,4 @@
-package sql;
+package server_sql;
 
 
 public class Message {

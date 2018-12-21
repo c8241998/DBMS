@@ -1,4 +1,4 @@
-package sql;
+package server_sql;
 
 import java.io.Serializable;
 import java.util.ArrayList;

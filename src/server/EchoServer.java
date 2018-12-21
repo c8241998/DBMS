@@ -3,8 +3,7 @@ package server;
 import java.io.*;
 import java.net.*;
 
-
-import sql.AnalysisSQL;
+import server_sql.AnalysisSQL;
  
 public class EchoServer{
 	private int port=8000;
@@ -80,7 +79,7 @@ class Handler implements Runnable{
 			while ((msg=br.readLine())!=null) {        //接收客户端发送的sql语句
 				try {
 					System.out.println(msg);
-					sql.Message message = analysisSQL.work(msg);        //处理sql语句
+					server_sql.Message message = analysisSQL.work(msg);        //处理sql语句
 					if(message.flag!=1) {
 						pw.println(message.msg);          // 异常
 					}else {
@@ -96,8 +95,8 @@ class Handler implements Runnable{
 				
 			}
 		} catch (Exception e) {
-			//e.printStackTrace();
-			System.out.println(".");
+			e.printStackTrace();
+//			System.out.println(".");
 		}finally{
 			try {
 				if(socket!=null){
